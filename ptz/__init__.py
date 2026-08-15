@@ -1,4 +1,5 @@
-"""PTZ module — camera control utilities and state sharing.
+"""
+PTZ module — camera control utilities and state sharing.
 
 The actual gamepad → camera control loop lives in ptz_controller.py
 (a standalone process). This module provides:
@@ -8,4 +9,4 @@ The actual gamepad → camera control loop lives in ptz_controller.py
 - state: file-based state sharing between controller and web UI
 """
 
-from . import config
+from . import config  # noqa: F401 — re-exported for public API

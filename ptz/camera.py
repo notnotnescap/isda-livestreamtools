@@ -1,4 +1,5 @@
-"""VISCA-over-IP camera wrapper.
+"""
+VISCA-over-IP camera wrapper.
 
 Provides a simple interface for PTZ camera operations,
 including joystick-to-speed conversion.
@@ -26,11 +27,11 @@ class PTZCamera:
         """Connect to the camera. Returns True on success."""
         try:
             self._cam = Camera(self.ip)
-            return True
         except (visca_over_ip.exceptions.NoQueryResponse, OSError) as exc:
             print(f"PTZCamera: could not connect to {self.ip}: {exc}")
             self._cam = None
             return False
+        return True
 
     @property
     def connected(self) -> bool:
@@ -126,7 +127,8 @@ class AxisMapper:
         speedup: bool = False,
         multiplier: float = 1.0,
     ) -> int:
-        """Convert a joystick axis value (-1..1) to a camera speed integer.
+        """
+        Convert a joystick axis value (-1..1) to a camera speed integer.
 
         Args:
             raw: Raw axis value from the controller (-1 to 1).
@@ -134,6 +136,7 @@ class AxisMapper:
             invert: Flip the output sign.
             speedup: Double the speed (for quick-pan/quick-zoom buttons).
             multiplier: Additional scaling factor (e.g. zoom compensation).
+
         """
         table = self._tables[table_name]
         sign = 1 if raw >= 0 else -1

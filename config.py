@@ -1,4 +1,5 @@
-"""Central configuration loader.
+"""
+Central configuration loader.
 
 All configuration for the web app, the OBS connection and the PTZ controller
 lives in one place: ``config.yaml`` (see ``config.example.yaml`` for a
@@ -14,7 +15,7 @@ from pathlib import Path
 import yaml
 
 CONFIG_FILE = Path(
-    os.environ.get("ISDA_CONFIG_FILE", Path(__file__).resolve().parent / "config.yaml")
+    os.environ.get("ISDA_CONFIG_FILE", Path(__file__).resolve().parent / "config.yaml"),
 )
 
 # Sensible defaults so the app still boots with a missing/partial config file.
@@ -44,7 +45,7 @@ _DEFAULTS: dict = {
         "reconnect_interval": 60,
         "long_press_time": 1.0,
     },
-    "app": {"host": "0.0.0.0", "port": 5000, "debug": False},
+    "app": {"host": "0.0.0.0", "port": 5000, "debug": False},  # noqa: S104 — LAN-only default
 }
 
 
@@ -63,7 +64,7 @@ def load() -> dict:
     """Load configuration from ``config.yaml`` (missing file → defaults)."""
     if not CONFIG_FILE.exists():
         return _DEFAULTS
-    with open(CONFIG_FILE) as fh:
+    with CONFIG_FILE.open() as fh:
         user_cfg = yaml.safe_load(fh) or {}
     return _deep_merge(_DEFAULTS, user_cfg)
 

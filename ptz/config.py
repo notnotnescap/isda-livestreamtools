@@ -1,12 +1,13 @@
-"""PTZ configuration — values now live in the root config.yaml.
+"""
+PTZ configuration — values now live in the root config.yaml.
 
 ``ptz_controller.py`` and friends can still ``from ptz import config``
 and use ``config.CAMERAS`` etc.  The actual values come from the root
 :mod:`config` module, which loads ``config.yaml``.
 """
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 _project_root = str(Path(__file__).resolve().parent.parent)
 if _project_root not in sys.path:

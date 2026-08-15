@@ -1,29 +1,16 @@
-"""Game controller reader using pygame.
+"""
+Game controller reader using pygame.
 
 Wraps a physical game controller, maps buttons/axes/hats via config,
 and provides an event-polling interface.
 """
 
 import time
-from collections.abc import Iterable
 from dataclasses import dataclass, field
 
+import pygame
+
 from . import config
-
-# These are populated lazily when a controller connects
-_pygame_imported = False
-
-
-def _ensure_pygame():
-    global _pygame_imported
-    if not _pygame_imported:
-        import pygame
-
-        _pygame_imported = True
-    import pygame
-
-    return pygame
-
 
 # -- Named axis/button/hat IDs for clean access ------------------------------
 
@@ -73,7 +60,6 @@ class Gamepad:
     """Reads a physical game controller via pygame."""
 
     def __init__(self):
-        self._pg = None
         self._joystick = None
 
         # Pre-built lookup tables from config
@@ -101,28 +87,27 @@ class Gamepad:
 
     def connect(self) -> bool:
         """Try to connect to the first available joystick. Returns True on success."""
-        pg = _ensure_pygame()
-
-        pg.joystick.init()
-        count = pg.joystick.get_count()
+        pygame.joystick.init()
+        count = pygame.joystick.get_count()
         if count == 0:
             self._joystick = None
             return False
 
+        self._joystick = None
         try:
-            self._joystick = pg.joystick.Joystick(0)
-            self._joystick.init()
-            return True
-        except pg.error:
-            self._joystick = None
+            stick = pygame.joystick.Joystick(0)
+            stick.init()
+        except pygame.error:
             return False
+
+        self._joystick = stick
+        return True
 
     @property
     def connected(self) -> bool:
         if self._joystick is None:
             return False
-        pg = _ensure_pygame()
-        if pg.joystick.get_count() == 0:
+        if pygame.joystick.get_count() == 0:
             self._joystick = None
             return False
         return True
@@ -132,26 +117,43 @@ class Gamepad:
         if self._joystick:
             try:
                 return self._joystick.get_name()
-            except Exception:
-                pass
+            except (pygame.error, AttributeError):
+                return ""
         return ""
 
     # -- Polling --------------------------------------------------------------
 
+    def _process_hat_motion(self, event):
+        """Handle a single JOYHATMOTION event."""
+        hat_value = tuple(event.value)
+        hat_id = self._hat_ids.get(hat_value)
+        label = f"Hat {hat_value}" if hat_id is None else f"Hat {hat_value} ({hat_id.name})"
+
+        if hat_value == (0, 0):
+            self._raw_events.append(label + " ·")
+            for hidx, hat_name in self._hat_ids.items():
+                if hidx in self._down_times:
+                    duration = time.time() - self._down_times.pop(hidx)
+                    (self._long_hats if duration > config.LONG_PRESS_TIME else self._short_hats).append(
+                        hat_name.name,
+                    )
+                    break
+        else:
+            self._raw_events.append(label + " ↓")
+            if hat_id and hat_id.value not in self._down_times:
+                self._down_times[hat_id.value] = time.time()
+
     def _process_events(self):
         """Drain the pygame event queue, tracking press/release timings."""
-        pg = _ensure_pygame()
-
-        for event in pg.event.get():
-            if event.type == pg.JOYBUTTONDOWN:
+        for event in pygame.event.get():
+            if event.type == pygame.JOYBUTTONDOWN:
                 idx = event.button
                 self._down_times[idx] = time.time()
-                # Raw: always capture, even unmapped
                 name = self._button_ids.get(idx)
                 label = f"Btn {idx}" if name is None else f"Btn {idx} ({name.name})"
                 self._raw_events.append(label + " ↓")
 
-            elif event.type == pg.JOYBUTTONUP:
+            elif event.type == pygame.JOYBUTTONUP:
                 idx = event.button
                 name = self._button_ids.get(idx)
                 label = f"Btn {idx}" if name is None else f"Btn {idx} ({name.name})"
@@ -160,31 +162,11 @@ class Gamepad:
                     duration = time.time() - self._down_times.pop(idx)
                     if name:
                         (self._long_presses if duration > config.LONG_PRESS_TIME else self._short_presses).append(
-                            name.name
+                            name.name,
                         )
 
-            elif event.type == pg.JOYHATMOTION:
-                hat_value = tuple(event.value)
-                hat_id = self._hat_ids.get(hat_value)
-                label = f"Hat {hat_value}" if hat_id is None else f"Hat {hat_value} ({hat_id.name})"
-
-                if hat_value == (0, 0):
-                    # Hat released
-                    self._raw_events.append(label + " ·")
-                    for hidx, hat_name in self._hat_ids.items():
-                        if hidx in self._down_times:
-                            duration = time.time() - self._down_times.pop(hidx)
-                            (self._long_hats if duration > config.LONG_PRESS_TIME else self._short_hats).append(
-                                hat_name.name
-                            )
-                            break
-                elif hat_id:
-                    self._raw_events.append(label + " ↓")
-                    if hat_id.value not in self._down_times:
-                        self._down_times[hat_id.value] = time.time()
-                else:
-                    # Unmapped hat press
-                    self._raw_events.append(label + " ↓")
+            elif event.type == pygame.JOYHATMOTION:
+                self._process_hat_motion(event)
 
     def poll(self) -> GamepadState:
         """Read current controller state and return a snapshot."""
@@ -216,7 +198,7 @@ class Gamepad:
         for aid in self._axis_ids.values():
             try:
                 axes[aid.name] = self._joystick.get_axis(aid.index)
-            except Exception:
+            except (pygame.error, AttributeError):
                 axes[aid.name] = 0.0
 
         # Read current buttons
@@ -224,7 +206,7 @@ class Gamepad:
         for bid in self._button_ids.values():
             try:
                 buttons[bid.name] = self._joystick.get_button(bid.index) == 1
-            except Exception:
+            except (pygame.error, AttributeError):
                 buttons[bid.name] = False
 
         return GamepadState(
@@ -247,8 +229,8 @@ class Gamepad:
             if aid.name == name:
                 try:
                     return self._joystick.get_axis(aid.index)
-                except Exception:
-                    pass
+                except (pygame.error, AttributeError):
+                    return 0.0
         return 0.0
 
     def is_button_pressed(self, name: str) -> bool:
@@ -259,8 +241,8 @@ class Gamepad:
             if bid.name == name:
                 try:
                     return self._joystick.get_button(bid.index) == 1
-                except Exception:
-                    pass
+                except (pygame.error, AttributeError):
+                    return False
         return False
 
     # -- Maintenance -----------------------------------------------------------

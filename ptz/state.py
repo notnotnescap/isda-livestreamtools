@@ -1,16 +1,13 @@
-"""Lightweight file-based state sharing between the PTZ controller process
-and the Flask web app.  The controller writes JSON; the web app reads it.
+"""
+Lightweight file-based state sharing between the PTZ controller process and the Flask web app.
 
-No threading, no IPC — just a file in the OS temp directory.
+The controller writes JSON; the web app reads it. No threading, no IPC — just a file in the OS temp directory.
 """
 
 import json
-import os
 import tempfile
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
-
 
 STATE_FILE = Path(tempfile.gettempdir()) / "isda-ptz-state.json"
 

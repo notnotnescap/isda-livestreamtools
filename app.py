@@ -1,9 +1,11 @@
-"""ISDA Live Stream Tools - Flask Backend
+"""
+ISDA Live Stream Tools - Flask Backend
 
 Hosts the main control UI and a dynamic transparent overlay page.
 Uses SSE (Server-Sent Events) for real-time overlay triggers.
 """
 
+import contextlib
 import json
 import queue
 
@@ -45,7 +47,8 @@ def overlay():
 
 @app.route("/api/trigger-overlay", methods=["POST"])
 def trigger_overlay():
-    """Queue an overlay animation on ALL connected overlay clients.
+    """
+    Queue an overlay animation on ALL connected overlay clients.
 
     JSON body: {"text": "Welcome", "duration": 8}
     """
@@ -56,10 +59,8 @@ def trigger_overlay():
     }
     # Broadcast to every connected overlay page
     for q in _overlay_clients:
-        try:
+        with contextlib.suppress(queue.Full):
             q.put_nowait(event)
-        except queue.Full:
-            pass
     return jsonify({"status": "ok", "clients": len(_overlay_clients)})
 
 
@@ -121,7 +122,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="ISDA Live Stream Tools")
     parser.add_argument(
         "--port", type=int, default=int(os.environ.get("PORT", config.APP_PORT)),
-        help=f"Port to listen on (default: {config.APP_PORT}, or $PORT)"
+        help=f"Port to listen on (default: {config.APP_PORT}, or $PORT)",
     )
     args = parser.parse_args()
 
@@ -129,5 +130,5 @@ if __name__ == "__main__":
     print("ISDA Live Stream Tools")
     print(f"   Main UI:  http://localhost:{port}/")
     print(f"   Overlay:  http://localhost:{port}/overlay  (add as OBS browser source)")
-    print(f"   PTZ controller:  uv run python ptz_controller.py  (optional, separate terminal)")
+    print("   PTZ controller:  uv run python ptz_controller.py  (optional, separate terminal)")
     app.run(host=config.APP_HOST, port=port, debug=config.APP_DEBUG, threaded=True)
