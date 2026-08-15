@@ -1,0 +1,14 @@
+[project]
+name = "isda-livestreamtool"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.0",
+    "pygame>=2.0",
+    "visca-over-ip>=0.5",
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+]
+
+[tool.uv]
+dev-dependencies = []

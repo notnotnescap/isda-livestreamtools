@@ -1,0 +1,69 @@
+# ISDA Live Stream Tools — example configuration
+#
+# Copy this file to `config.yaml` and fill in your own values.
+# `config.yaml` is gitignored — never commit it.
+
+# --- OBS Studio (WebSocket) ------------------------------------------------
+obs:
+  ip: "127.0.0.1"
+  port: 4455
+  password: "CHANGE_ME"
+
+# --- PTZ cameras & OSEE GoStream Deck --------------------------------------
+ptz:
+  # VISCA-over-IP camera addresses
+  cameras:
+    - "192.168.1.12"
+  # OSEE GoStream Deck (transitions)
+  osee_host: "192.168.1.10"
+  osee_port: 19010
+  osee_cut_transition: ""
+  osee_auto_transition: ""
+
+  # Joystick axis → camera speed interpolation tables.
+  # Keys are (joystick_value, camera_speed); values between points are
+  # linearly interpolated.
+  sensitivity:
+    pan:  { joy: [0, 0.02, 0.1, 0.3, 0.4, 0.5], cam: [0, 0, 1, 4, 7, 10] }
+    tilt: { joy: [0, 0.04, 0.1, 0.3, 0.4, 0.5], cam: [0, 0, 1, 3, 7, 9] }
+    zoom: { joy: [0, 0.05, 0.5],                 cam: [0, 0, 3] }
+
+  # Invert axis directions
+  invert_pan: false
+  invert_tilt: false
+  invert_zoom: true
+
+  # Game controller button/axis mappings (pygame IDs).
+  controls:
+    axes:
+      ZOOM: 1
+      PAN: 2
+      TILT: 3
+      PAN_LEFT: 4
+      PAN_RIGHT: 5
+    buttons:
+      QUICK_ZOOM: 13
+      QUICK_PAN: 14
+      RESET_POSITION: 1
+      TRANSITION_CUT: 6
+      TRANSITION_AUTO: 7
+    buttons_hold:
+      TRACKING_TOGGLE: 0
+    hats:
+      EXPOSURE_UP: [0, 1]
+      EXPOSURE_DOWN: [0, -1]
+      FOCUS_FAR: [1, 0]
+      FOCUS_NEAR: [-1, 0]
+
+  # How often to poll the controller (seconds)
+  poll_interval: 0.03
+  # Auto-reconnect interval (seconds)
+  reconnect_interval: 60
+  # Hold threshold for long-press detection (seconds)
+  long_press_time: 1.0
+
+# --- Flask app --------------------------------------------------------------
+app:
+  host: "0.0.0.0"
+  port: 5000
+  debug: false

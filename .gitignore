@@ -1,0 +1,10 @@
+__pycache__/
+.venv/
+node_modules/
+static/css/output.css
+
+# Local configuration — contains real credentials. Never commit!
+config.yaml
+
+# Backup of old .git (temporary)
+.git-old/

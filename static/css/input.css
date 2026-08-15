@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+@source "../../templates/**/*.html";
+@source "../js/**/*.js";
+
+@font-face {
+    font-family: 'nunito';
+    src: url('../nunito_extrabold.ttf');
+}
+
+@layer components {
+    body {
+        background-color: #282a32;
+        color: white;
+        padding: 0.25rem;
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+    }
+
+    button, input {
+        padding: 0.25rem;
+        background-color: #3d404c;
+        border-radius: 0.25rem;
+        border: 1px solid transparent;
+    }
+
+    button:enabled:hover {
+        background-color: #474b58;
+        border-color: #6b7280;
+    }
+
+    button:enabled:active {
+        background-color: #1d1f25;
+    }
+
+    input[type="time"]::-webkit-calendar-picker-indicator {
+        filter: invert(100%);
+    }
+
+    details {
+        margin-bottom: 0.25rem;
+        padding: 0.25rem;
+        border: 1px solid #4b5563;
+        border-radius: 0.25rem;
+    }
+
+    section {
+        padding: 0.25rem 0.25rem 0 0.25rem;
+    }
+
+    details summary {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    details[open] summary {
+        padding-bottom: 0.25rem;
+    }
+
+    button.darker {
+        background-color: #2f323e;
+        color: #9ca3af;
+    }
+
+    button.darker:enabled:hover {
+        background-color: #3a3d4a;
+        border-color: #4b5563;
+    }
+
+    button.darker:enabled:active {
+        background-color: #1d1f25;
+    }
+
+    button.green {
+        background-color: #16a34a;
+    }
+
+    button.green:enabled:hover {
+        background-color: #22c55e;
+        border-color: #4ade80;
+    }
+
+    button.green:enabled:active {
+        background-color: #15803d;
+    }
+
+    button.red {
+        background-color: #ef4444;
+    }
+
+    button.red:enabled:hover {
+        background-color: #dc2626;
+        border-color: #f87171;
+    }
+
+    button.red:enabled:active {
+        background-color: #b91c1c;
+    }
+
+    button.blue {
+        background-color: #2563eb;
+    }
+
+    button.blue:enabled:hover {
+        background-color: #3b82f6;
+        border-color: #60a5fa;
+    }
+
+    button.blue:enabled:active {
+        background-color: #1d4ed8;
+    }
+
+    /* PTZ axis sliders */
+    .ptz-slider {
+        flex: 1;
+        height: 0.5rem;
+        background-color: #1e2030;
+        border-radius: 0.25rem;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .ptz-slider-fill {
+        height: 100%;
+        width: 50%;
+        background-color: #3b82f6;
+        border-radius: 0.25rem;
+        transition: width 0.05s linear;
+        position: absolute;
+        left: 0;
+        top: 0;
+    }
+
+    /* Center marker on sliders */
+    .ptz-slider::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        background-color: rgba(255, 255, 255, 0.2);
+        pointer-events: none;
+    }
+
+    /* OBS recording/streaming pulse */
+    .obs-pulse {
+        animation: obs-pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes obs-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+    }
+}

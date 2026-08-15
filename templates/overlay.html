@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISDA Overlay</title>
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            overflow: hidden;
+            font-family: 'nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        /* -- Lower third container: logo + text, bottom-left ------------- */
+
+        #lower-third {
+            position: absolute;
+            bottom: 60px;
+            left: 60px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            opacity: 0;
+            pointer-events: none;
+            will-change: transform, opacity;
+        }
+
+        #lower-third.animate {
+            animation: lowerInOut var(--duration, 3s) ease-in-out forwards;
+        }
+
+        #overlay-logo {
+            height: 120px;
+            width: auto;
+        }
+
+        #overlay-text {
+            color: #ffffff;
+            font-size: 56px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            text-shadow:
+                0 2px 6px rgba(0, 0, 0, 0.5),
+                0 0 30px rgba(0, 0, 0, 0.3);
+            white-space: nowrap;
+        }
+
+        @keyframes lowerInOut {
+            0%   { opacity: 0; transform: translateX(-40px); }
+            8%  { opacity: 1; transform: translateX(0); }
+            92%  { opacity: 1; transform: translateX(0); }
+            100% { opacity: 0; transform: translateX(-24px); }
+        }
+    </style>
+</head>
+<body>
+    <div id="lower-third">
+        <img id="overlay-logo" src="{{ url_for('static', filename='logo.png') }}" alt="">
+        <span id="overlay-text"></span>
+    </div>
+
+    <script>
+        (function () {
+            const container = document.getElementById('lower-third');
+            const textEl = document.getElementById('overlay-text');
+
+            let retryMs = 1000;
+
+            function connect() {
+                const es = new EventSource('/api/overlay-events');
+
+                es.onmessage = function (event) {
+                    retryMs = 1000;
+                    const data = JSON.parse(event.data);
+                    textEl.textContent = data.text;
+                    container.classList.remove('animate');
+                    void container.offsetWidth;
+                    container.style.setProperty('--duration', (data.duration || 3) + 's');
+                    container.classList.add('animate');
+                };
+
+                es.onerror = function () {
+                    es.close();
+                    setTimeout(connect, retryMs);
+                    retryMs = Math.min(retryMs * 2, 30000);
+                };
+            }
+
+            connect();
+        })();
+    </script>
+</body>
+</html>

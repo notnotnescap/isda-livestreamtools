@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISDA Live Stream Tools</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
+    <script src="{{ url_for('static', filename='js/vendor/obs-ws.min.js') }}"></script>
+</head>
+<body>
+    <section class="auto-start">
+        <details open>
+            <summary>Autostart: Starting in</summary>
+            <form class="auto-start-form flex flex-col">
+                <button>Start Now</button>
+                <label for="autostart-time">Set Autostart Time:</label>
+                <input type="time" id="autostart-time" name="autostart-time" value="10:35">
+            </form>
+        </details>
+    </section>
+
+    <section class="obs-status" id="obs-status-section">
+        <details open>
+            <summary>OBS Status</summary>
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs">
+                <span class="flex items-center">
+                    OBS: <span id="obs-dot" class="inline-block w-2 h-2 rounded-full bg-gray-600 mr-1 ml-1"></span>
+                    <span id="obs-label" class="text-gray-500">—</span>
+                </span>
+                <span class="flex items-center">
+                    <span id="obs-recording-dot" class="inline-block w-2 h-2 rounded-full bg-gray-600 mr-1"></span>
+                    <span id="obs-recording-label" class="text-gray-500">—</span>
+                </span>
+                <span class="flex items-center">
+                    <span id="obs-streaming-dot" class="inline-block w-2 h-2 rounded-full bg-gray-600 mr-1"></span>
+                    <span id="obs-streaming-label" class="text-gray-500">—</span>
+                </span>
+                <span class="flex items-center">
+                    Scene: <span id="obs-scene-label" class="text-gray-500 ml-1">—</span>
+                </span>
+            </div>
+            <div id="obs-stats-row" class="flex flex-wrap items-center gap-x-4 gap-y-0.5 text-xs mt-1" style="display:none">
+                <span>CPU <span id="obs-cpu" class="text-gray-300">—</span></span>
+                <span>FPS <span id="obs-fps" class="text-gray-300">—</span></span>
+                <span>Render <span id="obs-render" class="text-gray-300">—</span></span>
+                <span>Dropped <span id="obs-frames" class="text-gray-500">—</span></span>
+                <span>Bitrate <span id="obs-bitrate" class="text-gray-500">—</span></span>
+            </div>
+        </details>
+    </section>
+
+    <section class="ptz" id="ptz-section">
+        <details>
+            <summary>PTZ Controller</summary>
+
+            <!-- Status row -->
+            <div class="flex items-center gap-4 mb-1 text-xs">
+                <span class="flex items-center">
+                    Controller: <span id="ptz-controller-dot" class="inline-block w-2 h-2 rounded-full bg-red-400 mr-1 ml-1"></span>
+                    <span id="ptz-controller-label" class="text-red-400">Disconnected</span>
+                </span>
+                <span>
+                    Camera: <span id="ptz-camera-label" class="text-gray-400 ml-1">—</span>
+                </span>
+            </div>
+
+            <!-- Axis sliders -->
+            <div class="flex flex-col gap-0.5 mb-1">
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="w-16 text-gray-400 text-right">Pan</span>
+                    <div id="ptz-slider-pan" class="ptz-slider"><div class="ptz-slider-fill"></div></div>
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="w-16 text-gray-400 text-right">Tilt</span>
+                    <div id="ptz-slider-tilt" class="ptz-slider"><div class="ptz-slider-fill bg-blue-500"></div></div>
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="w-16 text-gray-400 text-right">Zoom</span>
+                    <div id="ptz-slider-zoom" class="ptz-slider"><div class="ptz-slider-fill bg-yellow-500"></div></div>
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="w-16 text-gray-400 text-right">Pan L</span>
+                    <div id="ptz-slider-pan-left" class="ptz-slider"><div class="ptz-slider-fill bg-purple-500"></div></div>
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="w-16 text-gray-400 text-right">Pan R</span>
+                    <div id="ptz-slider-pan-right" class="ptz-slider"><div class="ptz-slider-fill bg-purple-500"></div></div>
+                </div>
+            </div>
+
+            <!-- Last action -->
+            <div class="text-xs text-gray-500">
+                Last action: <span id="ptz-action-text" class="text-gray-300">—</span>
+            </div>
+            <div class="text-xs text-gray-500">
+                Raw input: <span id="ptz-raw-text" class="text-gray-400 font-mono">—</span>
+            </div>
+        </details>
+    </section>
+
+    <section class="overlays">
+        <details open>
+            <summary>Overlays</summary>
+            <div class="flex flex-wrap gap-1 mt-1">
+                <button class="overlay-trigger" data-text="Welcome to our online viewers! | Thank you for Joining us!">Welcome</button>
+                <button class="overlay-trigger" data-text="Subscribe to our YouTube channel if you haven't already!">Like & Subscribe</button>
+                <button id="overlay-custom-btn">Custom text</button>
+            </div>
+        </details>
+    </section>
+
+    <section class="timestamps">
+        <details open>
+            <summary>Timestamps</summary>
+            <div class="flex">
+                <div id="timestamps-container" class="font-mono border border-gray-600 rounded block mb-1 p-1 w-full h-32 overflow-y-auto text-xs bg-[#282a32] flex flex-col space-y-1">
+                    <div class="flex space-x-1 items-center">
+                        <button class="py-0 px-1 cursor-not-allowed" disabled>&nbsp;</button>
+                        <span>00:00 - Live Stream Countdown</span>
+                    </div>
+                </div>
+            </div>
+            <div class="timestamp-buttons flex flex-col space-y-1">
+                <div class="timestamp-events flex flex-col space-y-1 max-h-64 overflow-y-auto border border-gray-600 p-1 rounded">
+                    <button>Mission Spotlight</button>
+                    <button>Song Service</button>
+                    <button>Welcome and announcements</button>
+                    <button>Call to Worship and Opening Song</button>
+                    <button>Intercessory Prayer</button>
+                    <button>Children's Story</button>
+                    <button>Tithes and Offerings</button>
+                    <button>Special Music</button>
+                    <button>Scripture Reading</button>
+                    <button>Sermon</button>
+                    <button>Meditation</button>
+                    <button>Closing Song</button>
+                    <button>Closing Prayer and Closing Remarks</button>
+                </div>
+                <button id="custom-text-btn" class="green">Insert custom text</button>
+                <button id="copy-timestamps-btn">Copy timestamps</button>
+            </div>
+        </details>
+    </section>
+
+    <section class="debug">
+        <details>
+            <summary>Advanced</summary>
+            <button id="clear-timestamps-btn" class="red">Clear timestamps</button>
+            <button class="red" onclick="location.reload()">Reload</button>
+        </details>
+    </section>
+
+    <script>window.OBS_CONFIG = {{ obs_config | tojson }};</script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ptz.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/obs-status.js') }}"></script>
+</body>
+</html>
