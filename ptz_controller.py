@@ -9,9 +9,14 @@ Usage:
     uv run python ptz_controller.py
 """
 
+import os
+import signal
 import socket
 import time
 import traceback
+
+# Set dummy video driver for headless operation (no display needed)
+os.environ.setdefault("SDL_VIDEO_DRIVER", "dummy")
 
 import pygame
 
@@ -191,6 +196,9 @@ def main():
     print("PTZ Camera Controller")
     print(f"   Cameras: {config.CAMERAS}")
     print("   Press Ctrl+C to stop")
+
+    # Trap SIGTERM (systemd stop) for clean shutdown
+    signal.signal(signal.SIGTERM, signal.default_int_handler)
 
     pygame.init()
     pygame.joystick.init()

@@ -87,21 +87,30 @@ class Gamepad:
 
     def connect(self) -> bool:
         """Try to connect to the first available joystick. Returns True on success."""
+        # Force a fresh device scan. SDL only enumerates devices on init, and
+        # a plain re-init is a no-op once initialized — which is why a controller
+        # plugged in after boot (or that was still enumerating at boot) never
+        # gets picked up without tearing the subsystem down first.
+        pygame.joystick.quit()
         pygame.joystick.init()
         count = pygame.joystick.get_count()
         if count == 0:
             self._joystick = None
             return False
 
-        self._joystick = None
-        try:
-            stick = pygame.joystick.Joystick(0)
-            stick.init()
-        except pygame.error:
-            return False
+        # Scan all indices — SDL usually exposes gamepads first, but be
+        # defensive in case a non-gamepad device grabs an early index.
+        for idx in range(count):
+            try:
+                stick = pygame.joystick.Joystick(idx)
+                stick.init()
+            except pygame.error:
+                continue
+            self._joystick = stick
+            return True
 
-        self._joystick = stick
-        return True
+        self._joystick = None
+        return False
 
     @property
     def connected(self) -> bool:

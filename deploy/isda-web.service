@@ -1,0 +1,21 @@
+[Unit]
+# Systemd user service for the ISDA Live Stream web app.
+# Install to ~/.config/systemd/user/isda-web.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now isda-web.service
+#
+# Requires: loginctl enable-linger  (for boot persistence without login)
+Description=ISDA Live Stream Web App (Flask)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/isda/Documents/isda-livestreamtool
+ExecStart=/home/isda/Documents/isda-livestreamtool/.venv/bin/python3 app.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

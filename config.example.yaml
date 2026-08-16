@@ -34,21 +34,22 @@ ptz:
   invert_zoom: true
 
   # Game controller button/axis mappings (pygame IDs).
+  # From visca-joystick main.py — matches 8BitDo Ultimate 2C.
   controls:
     axes:
-      ZOOM: 1
-      PAN: 2
-      TILT: 3
-      PAN_LEFT: 4
-      PAN_RIGHT: 5
+      ZOOM: 1        # Left stick Y
+      PAN: 3         # Right stick X
+      TILT: 4        # Right stick Y
+      PAN_LEFT: 2    # Left trigger
+      PAN_RIGHT: 5   # Right trigger
     buttons:
-      QUICK_ZOOM: 13
-      QUICK_PAN: 14
-      RESET_POSITION: 1
-      TRANSITION_CUT: 6
-      TRANSITION_AUTO: 7
+      QUICK_ZOOM: 9    # L3 (left stick click)
+      QUICK_PAN: 10    # R3 (right stick click)
+      RESET_POSITION: 1   # B
+      TRANSITION_CUT: 4   # LB
+      TRANSITION_AUTO: 5  # RB
     buttons_hold:
-      TRACKING_TOGGLE: 0
+      TRACKING_TOGGLE: 0  # A
     hats:
       EXPOSURE_UP: [0, 1]
       EXPOSURE_DOWN: [0, -1]
@@ -58,7 +59,7 @@ ptz:
   # How often to poll the controller (seconds)
   poll_interval: 0.03
   # Auto-reconnect interval (seconds)
-  reconnect_interval: 60
+  reconnect_interval: 5
   # Hold threshold for long-press detection (seconds)
   long_press_time: 1.0
 

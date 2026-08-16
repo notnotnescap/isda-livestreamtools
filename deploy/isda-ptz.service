@@ -1,0 +1,20 @@
+[Unit]
+# Systemd user service — install to ~/.config/systemd/user/isda-ptz.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now isda-ptz.service
+#   loginctl enable-linger  # for boot persistence without login
+Description=ISDA PTZ Camera Controller (gamepad -> VISCA-over-IP)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/isda/Documents/isda-livestreamtool
+ExecStart=/home/isda/Documents/isda-livestreamtool/.venv/bin/python3 ptz_controller.py
+Restart=always
+RestartSec=3
+Environment=SDL_VIDEO_DRIVER=dummy
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

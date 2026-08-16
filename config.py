@@ -42,7 +42,7 @@ _DEFAULTS: dict = {
             "hats": {},
         },
         "poll_interval": 0.03,
-        "reconnect_interval": 60,
+        "reconnect_interval": 5,
         "long_press_time": 1.0,
     },
     "app": {"host": "0.0.0.0", "port": 5000, "debug": False},  # noqa: S104 — LAN-only default

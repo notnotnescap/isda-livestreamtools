@@ -31,7 +31,10 @@
         const el = sliderEls[id];
         if (!el) return;
         // value is -1..1, map to 0..100%
-        const pct = ((value + 1) / 2) * 100;
+        // TILT and ZOOM sliders display inverted: pushing the stick up (negative)
+        // fills the slider instead of emptying it.
+        const invert = id === 'TILT' || id === 'ZOOM';
+        const pct = (invert ? ((1 - value) / 2) : ((value + 1) / 2)) * 100;
         const fill = el.querySelector('.ptz-slider-fill');
         if (fill) fill.style.width = pct + '%';
     }
