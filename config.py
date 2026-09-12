@@ -46,6 +46,17 @@ _DEFAULTS: dict = {
         "long_press_time": 1.0,
     },
     "app": {"host": "0.0.0.0", "port": 5000, "debug": False},  # noqa: S104 — LAN-only default
+    "gpu_watchdog": {
+        "enabled": True,
+        "poll_interval": 30,
+        "popup_program": "",  # empty = auto: kdialog → zenity → notify-send
+        "popup_title": "GPU lost — reboot required",
+        "popup_text": (
+            "The NVIDIA GPU is no longer reachable (Xid 79, GPU fell off the "
+            "bus). Hardware video encoding will fail until the machine is "
+            "rebooted. Please reboot this computer when convenient."
+        ),
+    },
 }
 
 
@@ -95,6 +106,13 @@ LONG_PRESS_TIME = float(_cfg["ptz"]["long_press_time"])
 APP_HOST = _cfg["app"]["host"]
 APP_PORT = int(_cfg["app"]["port"])
 APP_DEBUG = bool(_cfg["app"]["debug"])
+
+# --- GPU watchdog ----------------------------------------------------------------
+GPU_WATCHDOG_ENABLED = bool(_cfg["gpu_watchdog"]["enabled"])
+GPU_WATCHDOG_POLL_INTERVAL = float(_cfg["gpu_watchdog"]["poll_interval"])
+GPU_WATCHDOG_POPUP_PROGRAM = _cfg["gpu_watchdog"]["popup_program"]
+GPU_WATCHDOG_POPUP_TITLE = _cfg["gpu_watchdog"]["popup_title"]
+GPU_WATCHDOG_POPUP_TEXT = _cfg["gpu_watchdog"]["popup_text"]
 
 # Dict form for template injection (e.g. OBS settings for the web UI).
 OBS_CONFIG = {"ip": OBS_IP, "port": OBS_PORT, "password": OBS_PASSWORD}

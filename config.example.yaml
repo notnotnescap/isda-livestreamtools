@@ -68,3 +68,20 @@ app:
   host: "0.0.0.0"
   port: 5000
   debug: false
+
+# --- GPU watchdog (NVIDIA) ------------------------------------------------------
+# Polls nvidia-smi and shows a desktop popup (kdialog/zenity/notify-send) when
+# the GPU has been lost (Xid 79 "GPU fell off the bus"); NVENC encoding then
+# fails until the machine is rebooted. The watchdog only warns — it never
+# reboots by itself.
+gpu_watchdog:
+  enabled: true
+  # Seconds between nvidia-smi checks
+  poll_interval: 30
+  # Popup tool: "kdialog", "zenity", "notify-send", or leave empty to auto-detect
+  popup_program: ""
+  popup_title: "GPU lost — reboot required"
+  popup_text: >
+    The NVIDIA GPU is no longer reachable (Xid 79, GPU fell off the bus).
+    Hardware video encoding will fail until the machine is rebooted.
+    Please reboot this computer when convenient.

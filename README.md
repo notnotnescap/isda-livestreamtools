@@ -7,6 +7,8 @@ operation, overlay triggers, and a service-timestamp tracker.
 
 - **OBS control** — WebSocket connection to OBS Studio: start stream/recording,
   autostart on a timer, live recording/streaming status with stats
+- **GPU watchdog** — polls `nvidia-smi` and pops up a warning when the NVIDIA
+  GPU is lost (Xid 79 / bus failure); NVENC then fails until reboot
 - **PTZ camera controller** — gamepad-driven VISCA-over-IP camera control
   (pan/tilt/zoom, presets, exposure, focus) with a live status panel
 - **Overlays** — trigger animated lower-third overlays in OBS via a transparent
@@ -42,6 +44,7 @@ config.py           Loads all settings from config.yaml
    | `ptz.osee_*` | OSEE GoStream Deck host, port, transition packets |
    | `ptz.sensitivity` | Joystick → camera speed curves |
    | `ptz.controls` | Gamepad button/axis/hat mappings (pygame IDs) |
+   | `gpu_watchdog` | NVIDIA GPU loss watchdog: poll interval, popup tool/text |
    | `app` | Flask host, port, debug mode |
 
 > ⚠️ `config.yaml` is gitignored and contains real credentials — never commit it.
@@ -62,6 +65,10 @@ uv run python app.py
 
 # Terminal 2 — PTZ controller (optional, needs a gamepad)
 uv run python ptz_controller.py
+
+# Terminal 3 — GPU watchdog (optional; on the NVIDIA livestream machine)
+# Prefer deploying as a user service: deploy/isda-gpu-watchdog.service
+uv run python gpu_watchdog.py
 ```
 
 Then open <http://localhost:5000/> (control UI) and add

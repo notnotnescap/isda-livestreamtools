@@ -1,0 +1,23 @@
+[Unit]
+# Systemd user service — install to ~/.config/systemd/user/isda-gpu-watchdog.service
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now isda-gpu-watchdog.service
+#
+# Polls nvidia-smi and pops up a warning when the NVIDIA GPU is lost
+# (Xid 79 / "GPU fell off the bus"). Popup needs a graphical session,
+# hence After=graphical-session.target.
+Description=ISDA GPU Watchdog (popup when NVIDIA GPU is lost)
+After=network-online.target graphical-session.target
+Wants=network-online.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/isda/Documents/isda-livestreamtool
+ExecStart=/home/isda/Documents/isda-livestreamtool/.venv/bin/python3 gpu_watchdog.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target
