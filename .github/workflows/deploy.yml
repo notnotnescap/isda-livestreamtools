@@ -11,12 +11,11 @@ jobs:
     defaults:
       run:
         shell: 'powershell -ExecutionPolicy Bypass -command ". \"{0}\""'
-        working-directory: C:\Users\ISDA Brussels\Documents\isda-livestreamtool
+        working-directory: C:\isda-livestreamtool
 
     steps:
       - name: Pull latest code
         run: |
-          cd C:\Users\ISDA Brussels\Documents\isda-livestreamtool
           git fetch origin
           git reset --hard origin/main
 
@@ -40,8 +39,8 @@ jobs:
             Stop-Process -Force -ErrorAction SilentlyContinue
           Start-Sleep -Seconds 2
           # Start the Flask app in the background
-          $appPath = "C:\Users\ISDA Brussels\Documents\isda-livestreamtool\app.py"
-          $logDir = "C:\Users\ISDA Brussels\Documents\isda-livestreamtool\logs"
+          $appPath = "C:\isda-livestreamtool\app.py"
+          $logDir = "C:\isda-livestreamtool\logs"
           New-Item -ItemType Directory -Force -Path $logDir | Out-Null
           $logFile = Join-Path $logDir "app-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
           Start-Process python -ArgumentList $appPath -WindowStyle Hidden -RedirectStandardOutput $logFile -RedirectStandardError $logFile
