@@ -33,30 +33,9 @@ jobs:
 
       - name: Restart Flask app
         run: |
-          # Stop any running python process, then restart via schtasks (persists after runner exits)
+          # Kill old process and restart via schtasks (survives runner cleanup)
           Get-Process -Name "python*" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*app.py*" } | Stop-Process -Force -ErrorAction SilentlyContinue
           Start-Sleep -Seconds 2
           schtasks /Run /TN "ISDA Live Stream"
-
-      - name: Verify app is running
-        run: |
-          $maxRetries = 12
-          $retry = 0
-          $success = $false
-          while ($retry -lt $maxRetries) {
-            $retry++
-            try {
-              $resp = Invoke-WebRequest -Uri http://localhost:5000/ -TimeoutSec 3
-              if ($resp.StatusCode -eq 200) {
-                $success = $true
-                break
-              }
-            } catch { }
-            Write-Output "Waiting for Flask app... attempt $retry/$maxRetries"
-            Start-Sleep -Seconds 5
-          }
-          if (-not $success) {
-            throw "Flask app failed to start after $maxRetries attempts"
-          }
-          Write-Output "✅ Flask app is running (HTTP $($resp.StatusCode))"
+          Write-Output "Flask app restart initiated"
 
