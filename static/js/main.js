@@ -1,14 +1,10 @@
 /**
  * ISDA Live Stream Tools — Main UI JavaScript
  *
- * OBS config comes from ``window.OBS_CONFIG``, injected by the Flask
- * template from the centralized ``config.yaml``.
+ * OBS commands go through the shared persistent connection in obs-client.js
+ * (window.OBSClient); OBS config is injected by the Flask template from the
+ * centralized ``config.yaml``.
  */
-const OBS_CONFIG = window.OBS_CONFIG || {
-    ip: '127.0.0.1',
-    port: 4455,
-    password: '',
-};
 
 
 // ---------------------------------------------------------------------------
@@ -78,11 +74,8 @@ function clearSavedTimestamps() {
 // ---------------------------------------------------------------------------
 
 async function obsCommand(command, params = {}) {
-    const obs = new OBSWebSocket();
     try {
-        await obs.connect(`ws://${OBS_CONFIG.ip}:${OBS_CONFIG.port}`, OBS_CONFIG.password);
-        await obs.call(command, params);
-        await obs.disconnect();
+        await OBSClient.call(command, params);
         console.log(`OBS: ${command} ✓`);
         return true;
     } catch (error) {

@@ -14,7 +14,7 @@
             <form class="auto-start-form flex flex-col">
                 <button>Start Now</button>
                 <label for="autostart-time">Set Autostart Time:</label>
-                <input type="time" id="autostart-time" name="autostart-time" value="10:35">
+                <input type="time" id="autostart-time" name="autostart-time" value="10:40">
             </form>
         </details>
     </section>
@@ -50,7 +50,7 @@
     </section>
 
     <section class="ptz" id="ptz-section">
-        <details>
+        <details open>
             <summary>PTZ Controller</summary>
 
             <!-- Status row -->
@@ -151,6 +151,7 @@
     </section>
 
     <script>window.OBS_CONFIG = {{ obs_config | tojson }};</script>
+    <script src="{{ url_for('static', filename='js/obs-client.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/ptz.js') }}"></script>
     <script src="{{ url_for('static', filename='js/obs-status.js') }}"></script>

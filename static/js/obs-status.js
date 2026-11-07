@@ -2,7 +2,8 @@
  * OBS Status Monitor — polls OBS WebSocket for recording/streaming state
  * and performance stats (CPU, FPS, render time, frames, bitrate).
  *
- * Reads OBS_CONFIG from main.js (global) — no separate credentials.
+ * Uses the shared persistent connection from obs-client.js (window.OBSClient),
+ * so it no longer opens a new OBS WebSocket on every poll.
  */
 
 (function () {
@@ -66,33 +67,39 @@
         if (statsRow) statsRow.style.display = 'none';
     }
 
+    function setConnecting() {
+        obsDot.className = 'inline-block w-2 h-2 rounded-full bg-yellow-400 mr-1';
+        obsLabel.textContent = 'Connecting...';
+        obsLabel.className = 'text-yellow-400';
+    }
+
+    function setConnected() {
+        obsDot.className = 'inline-block w-2 h-2 rounded-full bg-green-400 mr-1';
+        obsLabel.textContent = 'Connected';
+        obsLabel.className = 'text-green-400';
+    }
+
+    // Connection state is driven by the shared client's events.
+    OBSClient.on('connecting', setConnecting);
+    OBSClient.on('connected', setConnected);
+    OBSClient.on('disconnected', () => setDisconnected('Disconnected'));
+
     async function poll() {
-        const cfg = window.OBS_CONFIG || (typeof OBS_CONFIG !== 'undefined' ? OBS_CONFIG : null);
-        if (!cfg) {
-            setDisconnected('No config');
+        // Only fetch stats while the shared connection is live.
+        if (!OBSClient.isConnected()) {
             setTimeout(poll, POLL_MS);
             return;
         }
 
-        let obs;
         try {
-            obs = new OBSWebSocket();
-            await obs.connect(`ws://${cfg.ip}:${cfg.port}`, cfg.password, {
-                rpcVersion: 1,
-                eventSubscriptions: 0,
-            });
-            lastErrorShown = '';
-
-            obsDot.className = 'inline-block w-2 h-2 rounded-full bg-green-400 mr-1';
-            obsLabel.textContent = 'Connected';
-            obsLabel.className = 'text-green-400';
-
             const [streamStatus, recordStatus, scene, stats] = await Promise.all([
-                obs.call('GetStreamStatus').catch(() => null),
-                obs.call('GetRecordStatus').catch(() => null),
-                obs.call('GetCurrentProgramScene').catch(() => null),
-                obs.call('GetStats').catch(() => null),
+                OBSClient.call('GetStreamStatus').catch(() => null),
+                OBSClient.call('GetRecordStatus').catch(() => null),
+                OBSClient.call('GetCurrentProgramScene').catch(() => null),
+                OBSClient.call('GetStats').catch(() => null),
             ]);
+            lastErrorShown = '';
+            setConnected();
 
             // --- Recording --------------------------------------------------
             if (recordStatus && recordStatus.outputActive) {
@@ -166,7 +173,6 @@
             }
             setDisconnected('Error');
         } finally {
-            try { obs?.disconnect(); } catch (_) { /* ignore */ }
             setTimeout(poll, POLL_MS);
         }
     }
