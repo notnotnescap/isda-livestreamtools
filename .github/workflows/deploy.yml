@@ -38,13 +38,26 @@ jobs:
           Start-Sleep -Seconds 2
           # Run the updated task
           schtasks /Run /TN "ISDA Live Stream"
-          Start-Sleep -Seconds 5
 
       - name: Verify app is running
         run: |
-          $resp = Invoke-WebRequest -Uri http://localhost:5000/ -TimeoutSec 5 -ErrorAction SilentlyContinue
-          if (-not $resp -or $resp.StatusCode -ne 200) {
-            throw "Flask app is not responding"
+          $maxRetries = 6
+          $retry = 0
+          $success = $false
+          while ($retry -lt $maxRetries) {
+            $retry++
+            try {
+              $resp = Invoke-WebRequest -Uri http://localhost:5000/ -TimeoutSec 3
+              if ($resp.StatusCode -eq 200) {
+                $success = $true
+                break
+              }
+            } catch { }
+            Write-Output "Waiting for Flask app... attempt $retry/$maxRetries"
+            Start-Sleep -Seconds 5
           }
-          Write-Output "Flask app is running (HTTP $($resp.StatusCode))"
+          if (-not $success) {
+            throw "Flask app failed to start after $maxRetries attempts"
+          }
+          Write-Output "✅ Flask app is running (HTTP $($resp.StatusCode))"
 
