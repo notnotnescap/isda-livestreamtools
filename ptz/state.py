@@ -5,6 +5,7 @@ The controller writes JSON; the web app reads it. No threading, no IPC — just 
 """
 
 import json
+import shutil
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -42,7 +43,11 @@ def write_status(status: PTZStatus):
     }
     tmp = STATE_FILE.with_suffix(".tmp")
     tmp.write_text(json.dumps(data))
-    tmp.replace(STATE_FILE)
+    try:
+        tmp.replace(STATE_FILE)
+    except PermissionError:
+        # Windows: retry with shutil.move (handles locked target files better)
+        shutil.move(str(tmp), str(STATE_FILE))
 
 
 def read_status() -> PTZStatus:
