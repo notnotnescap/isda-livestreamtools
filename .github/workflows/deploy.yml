@@ -33,25 +33,18 @@ jobs:
 
       - name: Restart Flask app
         run: |
-          # Stop any running python app.py process
-          Get-Process -Name "python" -ErrorAction SilentlyContinue |
-            Where-Object { $_.CommandLine -like "*app.py*" } |
-            Stop-Process -Force -ErrorAction SilentlyContinue
+          # End any running task
+          schtasks /End /TN "ISDA Live Stream" 2>$null
           Start-Sleep -Seconds 2
-          # Start the Flask app in the background
-          $appPath = "C:\isda-livestreamtool\app.py"
-          $logDir = "C:\isda-livestreamtool\logs"
-          New-Item -ItemType Directory -Force -Path $logDir | Out-Null
-          $logFile = Join-Path $logDir "app-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
-          $errFile = Join-Path $logDir "app-$(Get-Date -Format 'yyyyMMdd-HHmmss')-err.log"
-          Start-Process python -ArgumentList $appPath -WindowStyle Hidden -RedirectStandardOutput $logFile -RedirectStandardError $errFile
+          # Run the updated task
+          schtasks /Run /TN "ISDA Live Stream"
+          Start-Sleep -Seconds 5
 
       - name: Verify app is running
         run: |
-          $running = Get-Process -Name "python" -ErrorAction SilentlyContinue |
-            Where-Object { $_.CommandLine -like "*app.py*" }
-          if (-not $running) {
-            throw "Flask app failed to start"
+          $resp = Invoke-WebRequest -Uri http://localhost:5000/ -TimeoutSec 5 -ErrorAction SilentlyContinue
+          if (-not $resp -or $resp.StatusCode -ne 200) {
+            throw "Flask app is not responding"
           }
-          Write-Output "Flask app is running (PID: $($running.Id))"
+          Write-Output "Flask app is running (HTTP $($resp.StatusCode))"
 
