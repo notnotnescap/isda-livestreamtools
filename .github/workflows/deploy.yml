@@ -33,10 +33,9 @@ jobs:
 
       - name: Restart Flask app
         run: |
-          # End any running task
-          schtasks /End /TN "ISDA Live Stream" 2>$null
+          # Stop any running python process, then restart via schtasks (persists after runner exits)
+          Get-Process -Name "python*" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*app.py*" } | Stop-Process -Force -ErrorAction SilentlyContinue
           Start-Sleep -Seconds 2
-          # Run the updated task
           schtasks /Run /TN "ISDA Live Stream"
 
       - name: Verify app is running
