@@ -78,3 +78,4 @@ Then open <http://localhost:5000/> (control UI) and add
 
 - CSS is Tailwind; edit `static/css/input.css`, then `npm run build`
 - PTZ state is shared between processes via a JSON file in the OS temp dir
+
