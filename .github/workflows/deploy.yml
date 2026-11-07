@@ -41,7 +41,7 @@ jobs:
 
       - name: Verify app is running
         run: |
-          $maxRetries = 6
+          $maxRetries = 12
           $retry = 0
           $success = $false
           while ($retry -lt $maxRetries) {
