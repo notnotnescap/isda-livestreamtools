@@ -43,7 +43,8 @@ jobs:
           $logDir = "C:\isda-livestreamtool\logs"
           New-Item -ItemType Directory -Force -Path $logDir | Out-Null
           $logFile = Join-Path $logDir "app-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
-          Start-Process python -ArgumentList $appPath -WindowStyle Hidden -RedirectStandardOutput $logFile -RedirectStandardError $logFile
+          $errFile = Join-Path $logDir "app-$(Get-Date -Format 'yyyyMMdd-HHmmss')-err.log"
+          Start-Process python -ArgumentList $appPath -WindowStyle Hidden -RedirectStandardOutput $logFile -RedirectStandardError $errFile
 
       - name: Verify app is running
         run: |
