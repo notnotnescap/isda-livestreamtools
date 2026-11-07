@@ -112,6 +112,34 @@ def ptz_status():
 
 
 # ---------------------------------------------------------------------------
+# Config reload
+# ---------------------------------------------------------------------------
+
+@app.route("/api/reload-config", methods=["POST"])
+def reload_config():
+    """Reload config.yaml without restarting the server."""
+    import importlib
+    import sys
+
+    # Remove all cached config modules so they re-import on next access
+    for mod_name in list(sys.modules):
+        if mod_name.startswith("config") or mod_name == "config":
+            del sys.modules[mod_name]
+    # Also flush the ptz.config reference which caches config values
+    if "ptz.config" in sys.modules:
+        del sys.modules["ptz.config"]
+
+    import config as cfg
+    importlib.reload(cfg)
+
+    # Reload ptz.config which re-exports from the main config
+    from ptz import config as ptz_cfg
+    importlib.reload(ptz_cfg)
+
+    return jsonify({"status": "ok", "message": "Configuration reloaded"})
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

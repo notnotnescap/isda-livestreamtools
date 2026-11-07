@@ -146,10 +146,31 @@
         <details>
             <summary>Advanced</summary>
             <button id="clear-timestamps-btn" class="red">Clear timestamps</button>
-            <button class="red" onclick="location.reload()">Reload</button>
+            <button class="red" onclick="location.reload()">Reload page</button>
+            <button id="reload-config-btn" class="yellow">Reload config</button>
         </details>
     </section>
 
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('reload-config-btn');
+        if (btn) {
+          btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            btn.textContent = 'Reloading...';
+            try {
+              const res = await fetch('/api/reload-config', { method: 'POST' });
+              const data = await res.json();
+              btn.textContent = data.status === 'ok' ? '✅ Config reloaded' : '❌ Failed';
+              setTimeout(() => location.reload(), 1500);
+            } catch {
+              btn.textContent = '❌ Error';
+              btn.disabled = false;
+            }
+          });
+        }
+      });
+    </script>
     <script>window.OBS_CONFIG = {{ obs_config | tojson }};</script>
     <script src="{{ url_for('static', filename='js/obs-client.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
