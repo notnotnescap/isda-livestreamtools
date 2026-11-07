@@ -5,12 +5,13 @@ The controller writes JSON; the web app reads it. No threading, no IPC — just 
 """
 
 import json
+import os
 import shutil
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-STATE_FILE = Path(tempfile.gettempdir()) / "isda-ptz-state.json"
+# Use a path in the repo directory (pythonw.exe from Windows Store can't write to %%TEMP%%)
+STATE_FILE = Path(__file__).resolve().parent.parent / "run" / "isda-ptz-state.json"
 
 
 @dataclass
