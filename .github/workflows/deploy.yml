@@ -10,7 +10,7 @@ jobs:
 
     defaults:
       run:
-        shell: powershell
+        shell: 'powershell -ExecutionPolicy Bypass -command ". \"{0}\""'
         working-directory: C:\Users\ISDA Brussels\Documents\isda-livestreamtool
 
     steps:
