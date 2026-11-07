@@ -1,0 +1,56 @@
+name: Deploy to ISDA Livestream Windows Machine
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, windows]
+
+    defaults:
+      run:
+        shell: powershell
+        working-directory: C:\Users\ISDA Brussels\Documents\isda-livestreamtool
+
+    steps:
+      - name: Pull latest code
+        run: |
+          cd C:\Users\ISDA Brussels\Documents\isda-livestreamtool
+          git fetch origin
+          git reset --hard origin/main
+
+      - name: Install Python dependencies
+        run: |
+          pip install flask pygame visca-over-ip numpy pyyaml
+
+      - name: Install Node dependencies
+        run: |
+          npm install
+
+      - name: Build CSS
+        run: |
+          npm run build
+
+      - name: Restart Flask app
+        run: |
+          # Stop any running python app.py process
+          Get-Process -Name "python" -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -like "*app.py*" } |
+            Stop-Process -Force -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 2
+          # Start the Flask app in the background
+          $appPath = "C:\Users\ISDA Brussels\Documents\isda-livestreamtool\app.py"
+          $logDir = "C:\Users\ISDA Brussels\Documents\isda-livestreamtool\logs"
+          New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+          $logFile = Join-Path $logDir "app-$(Get-Date -Format 'yyyyMMdd-HHmmss').log"
+          Start-Process python -ArgumentList $appPath -WindowStyle Hidden -RedirectStandardOutput $logFile -RedirectStandardError $logFile
+
+      - name: Verify app is running
+        run: |
+          $running = Get-Process -Name "python" -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -like "*app.py*" }
+          if (-not $running) {
+            throw "Flask app failed to start"
+          }
+          Write-Output "Flask app is running (PID: $($running.Id))"
