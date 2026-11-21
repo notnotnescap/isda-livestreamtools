@@ -157,7 +157,11 @@ def normalize_trigger(raw: float) -> float:
 
 
 def combine_pan(pan_left: float, pan_right: float, pan_stick: float) -> float:
-    """Combine left trigger, right trigger, and joystick into one pan value."""
-    # Right trigger pans right (positive), left trigger pans left (negative).
-    combined = normalize_trigger(pan_right) - normalize_trigger(pan_left) + pan_stick
+    """Combine left trigger, right trigger, and joystick into one pan value.
+
+    Matches the legacy visca-joystick behaviour:
+        pan = left_trigger_norm - right_trigger_norm + joystick_pan
+    """
+    # Left trigger pans left (negative), right trigger pans right (positive).
+    combined = normalize_trigger(pan_left) - normalize_trigger(pan_right) + pan_stick
     return max(-1.0, min(1.0, combined))

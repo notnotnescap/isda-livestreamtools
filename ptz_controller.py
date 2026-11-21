@@ -145,7 +145,6 @@ def _drive_camera(cam: PTZCamera, mapper: AxisMapper, state) -> None:
     )
 
     cam.pantilt(pan_speed, tilt_speed)
-    time.sleep(config.POLL_INTERVAL)
 
     cam.zoom(
         mapper.to_speed(
