@@ -119,25 +119,50 @@ def _handle_hat_press(hat: str, cam: PTZCamera | None, status: PTZStatus) -> boo
     return False
 
 
-def _drive_camera(cam: PTZCamera, mapper: AxisMapper, state) -> None:
-    """Continuous pan/tilt/zoom control from the joystick axes."""
+def _read_axes_fresh(gamepad: Gamepad) -> dict[str, float]:
+    """Read current axis values directly from the gamepad.
+
+    Unlike ``state.axes`` which is captured once at the start of the
+    loop, this reads the *live* values so that any delay from button
+    handling doesn't make them stale.
+    """
+    axes: dict[str, float] = {}
+    for name, idx in config.CONTROLS["axes"].items():
+        axes[name] = gamepad.get_axis(name)
+    return axes
+
+
+def _drive_camera(
+    cam: PTZCamera,
+    mapper: AxisMapper,
+    gamepad: Gamepad,
+    buttons: dict[str, bool],
+) -> None:
+    """Continuous pan/tilt/zoom control from the joystick axes.
+
+    Reads axis values **just in time** (matching the legacy visca-joystick
+    behaviour) so that button-handling delays don't send stale commands.
+    """
     sensitivity = cam.zoom_sensitivity_multiplier()
-    quick_pan = state.buttons.get("QUICK_PAN", False)
-    quick_zoom = state.buttons.get("QUICK_ZOOM", False)
+    quick_pan = buttons.get("QUICK_PAN", False)
+    quick_zoom = buttons.get("QUICK_ZOOM", False)
+
+    # Read live axis values right before sending commands
+    pan_left = gamepad.get_axis("PAN_LEFT")
+    pan_right = gamepad.get_axis("PAN_RIGHT")
+    pan_stick = gamepad.get_axis("PAN")
+    tilt = gamepad.get_axis("TILT")
+    zoom = gamepad.get_axis("ZOOM")
 
     pan_speed = mapper.to_speed(
-        combine_pan(
-            state.axes.get("PAN_LEFT", 0),
-            state.axes.get("PAN_RIGHT", 0),
-            state.axes.get("PAN", 0),
-        ),
+        combine_pan(pan_left, pan_right, pan_stick),
         "pan",
         invert=config.INVERT_PAN,
         speedup=quick_pan,
         multiplier=sensitivity,
     )
     tilt_speed = mapper.to_speed(
-        state.axes.get("TILT", 0),
+        tilt,
         "tilt",
         invert=config.INVERT_TILT,
         speedup=quick_pan,
@@ -145,10 +170,11 @@ def _drive_camera(cam: PTZCamera, mapper: AxisMapper, state) -> None:
     )
 
     cam.pantilt(pan_speed, tilt_speed)
+    time.sleep(config.POLL_INTERVAL)
 
     cam.zoom(
         mapper.to_speed(
-            state.axes.get("ZOOM", 0),
+            zoom,
             "zoom",
             invert=config.INVERT_ZOOM,
             speedup=quick_zoom,
@@ -183,9 +209,10 @@ def _run_loop(gamepad: Gamepad, mapper: AxisMapper, cameras: dict[int, PTZCamera
         for hat in state.short_hats:
             _handle_hat_press(hat, cam, status)
 
-        # Continuous axis control
+        # Continuous axis control — reads live axis values, not the
+        # potentially-stale snapshot from ``state``.
         if cam and cam.connected:
-            _drive_camera(cam, mapper, state)
+            _drive_camera(cam, mapper, gamepad, state.buttons)
 
         write_status(status)
         time.sleep(config.POLL_INTERVAL)
