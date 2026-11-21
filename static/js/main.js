@@ -324,7 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     copyTimestampsButton.addEventListener('click', () => {
-        const timestampString = state.timestamps.map(ts => ts.toString()).join('\n');
+        const timestampString = '\n' + state.timestamps.map(ts => ts.toString()).join('\n') + '\n';
         navigator.clipboard.writeText(timestampString).then(() => {
             const originalText = copyTimestampsButton.textContent;
             copyTimestampsButton.textContent = 'Copied!';
