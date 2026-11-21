@@ -143,9 +143,49 @@ def reload_config():
 # Entry point
 # ---------------------------------------------------------------------------
 
+def _spawn_ptz_controller() -> None:
+    """Start the PTZ controller as a background subprocess.
+
+    Uses the same Python interpreter that's running this Flask app.
+    Silently skips if the process is already running.
+    """
+    import subprocess
+    import sys
+
+    # Check if ptz_controller is already running (avoid duplicates)
+    try:
+        import psutil  # type: ignore[import-untyped]
+        this_pid = os.getpid()
+        for proc in psutil.process_iter(["pid", "name", "cmdline"]):
+            if proc.info["pid"] == this_pid:
+                continue
+            cmdline = proc.info.get("cmdline") or []
+            if len(cmdline) >= 2 and "ptz_controller.py" in cmdline[-1]:
+                print("   PTZ controller: already running, skipping")
+                return
+    except ImportError:
+        pass  # psutil not available — just try to start
+
+    python_exe = sys.executable
+    script = os.path.join(os.path.dirname(__file__), "ptz_controller.py")
+    try:
+        proc = subprocess.Popen(
+            [python_exe, script],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+        )
+        print(f"   PTZ controller: started (pid {proc.pid})")
+    except Exception as exc:
+        print(f"   PTZ controller: failed to start — {exc}")
+
+
 if __name__ == "__main__":
     import argparse
     import os
+
+    # Auto-start the PTZ controller in the background
+    _spawn_ptz_controller()
 
     parser = argparse.ArgumentParser(description="ISDA Live Stream Tools")
     parser.add_argument(
@@ -158,5 +198,4 @@ if __name__ == "__main__":
     print("ISDA Live Stream Tools")
     print(f"   Main UI:  http://localhost:{port}/")
     print(f"   Overlay:  http://localhost:{port}/overlay  (add as OBS browser source)")
-    print("   PTZ controller:  uv run python ptz_controller.py  (optional, separate terminal)")
     app.run(host=config.APP_HOST, port=port, debug=config.APP_DEBUG, threaded=True)
