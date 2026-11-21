@@ -158,14 +158,19 @@ def _start_ptz_controller_thread() -> None:
         print("   PTZ controller: module not found, skipping")
         return
 
-    # Quick check: is the controller state file already being updated?
-    # (i.e. another instance is already running)
-    from ptz.state import read_status
+    # Clear any stale status from a previous run so the controller
+    # starts fresh (the duplicate-detection check below is unreliable
+    # when the status file is left over from a dead instance).
+    from ptz.state import write_status, PTZStatus
+    import config as cfg
     try:
-        status = read_status()
-        if status.controller_name or status.last_action:
-            print("   PTZ controller: already running (status exists), skipping")
-            return
+        fresh = PTZStatus(
+            axes=dict.fromkeys(cfg.CONTROLS["axes"], 0.0),
+            buttons=dict.fromkeys(cfg.CONTROLS["buttons"], False),
+        )
+        if cfg.CAMERAS:
+            fresh.camera_ip = cfg.CAMERAS[0]
+        write_status(fresh)
     except Exception:
         pass
 
