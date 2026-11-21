@@ -143,42 +143,14 @@ def reload_config():
 # Entry point
 # ---------------------------------------------------------------------------
 
-def _spawn_ptz_controller() -> None:
-    """Start the PTZ controller as a detached background process.
 
-    Uses ``subprocess.Popen`` with ``python.exe`` so pygame can
-    initialise its own event loop without conflicting with Flask's
-    threaded request handler.
-    """
-    import subprocess
-    import sys
-
-    script = os.path.join(os.path.dirname(__file__), "ptz_controller.py")
-    python_exe = os.path.join(os.path.dirname(sys.executable), "python.exe")
-    if not os.path.exists(python_exe):
-        python_exe = sys.executable  # fallback
-
-    try:
-        flags = 0
-        if sys.platform == "win32":
-            flags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
-        proc = subprocess.Popen(
-            [python_exe, script],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            creationflags=flags,
-        )
-        print(f"   PTZ controller: started (pid {proc.pid})")
-    except Exception as exc:
-        print(f"   PTZ controller: failed to start — {exc}")
 
 
 if __name__ == "__main__":
     import argparse
     import os
 
-    # Auto-start the PTZ controller as a detached subprocess
-    _spawn_ptz_controller()
+    print("   PTZ controller: started separately via Task Scheduler")
 
     parser = argparse.ArgumentParser(description="ISDA Live Stream Tools")
     parser.add_argument(
