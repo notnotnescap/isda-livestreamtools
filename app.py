@@ -143,54 +143,42 @@ def reload_config():
 # Entry point
 # ---------------------------------------------------------------------------
 
-def _start_ptz_controller_thread() -> None:
-    """Start the PTZ controller's main loop in a daemon thread.
+def _spawn_ptz_controller() -> None:
+    """Start the PTZ controller as a detached background process.
 
-    Runs inside the Flask process — no subprocess needed, no window
-    management issues.  Silently skipped if ptz_controller is
-    unavailable.
+    Uses ``subprocess.Popen`` with ``python.exe`` so pygame can
+    initialise its own event loop without conflicting with Flask's
+    threaded request handler.
     """
-    import threading
+    import subprocess
+    import sys
+
+    script = os.path.join(os.path.dirname(__file__), "ptz_controller.py")
+    python_exe = os.path.join(os.path.dirname(sys.executable), "python.exe")
+    if not os.path.exists(python_exe):
+        python_exe = sys.executable  # fallback
 
     try:
-        import ptz_controller  # type: ignore[import-untyped]
-    except ImportError:
-        print("   PTZ controller: module not found, skipping")
-        return
-
-    # Clear any stale status from a previous run so the controller
-    # starts fresh (the duplicate-detection check below is unreliable
-    # when the status file is left over from a dead instance).
-    from ptz.state import write_status, PTZStatus
-    import config as cfg
-    try:
-        fresh = PTZStatus(
-            axes=dict.fromkeys(cfg.CONTROLS["axes"], 0.0),
-            buttons=dict.fromkeys(cfg.CONTROLS["buttons"], False),
+        flags = 0
+        if sys.platform == "win32":
+            flags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
+        proc = subprocess.Popen(
+            [python_exe, script],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=flags,
         )
-        if cfg.CAMERAS:
-            fresh.camera_ip = cfg.CAMERAS[0]
-        write_status(fresh)
-    except Exception:
-        pass
-
-    def _run():
-        try:
-            ptz_controller.main()
-        except Exception as exc:
-            print(f"   PTZ controller thread exited: {exc}")
-
-    t = threading.Thread(target=_run, name="ptz-controller", daemon=True)
-    t.start()
-    print("   PTZ controller: started as daemon thread")
+        print(f"   PTZ controller: started (pid {proc.pid})")
+    except Exception as exc:
+        print(f"   PTZ controller: failed to start — {exc}")
 
 
 if __name__ == "__main__":
     import argparse
     import os
 
-    # Auto-start the PTZ controller in a background thread
-    _start_ptz_controller_thread()
+    # Auto-start the PTZ controller as a detached subprocess
+    _spawn_ptz_controller()
 
     parser = argparse.ArgumentParser(description="ISDA Live Stream Tools")
     parser.add_argument(
