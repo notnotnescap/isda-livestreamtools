@@ -59,6 +59,13 @@ class _PygameBackend:
 
     def connect(self) -> bool:
         pygame.joystick.quit()
+        # Must init display before joystick to get a working event pump
+        # (matching the legacy visca-joystick initialisation order).
+        try:
+            pygame.display.quit()
+            pygame.display.init()
+        except pygame.error:
+            pass  # dummy driver — display init may be a no-op
         pygame.joystick.init()
         count = pygame.joystick.get_count()
         if count == 0:
@@ -143,6 +150,14 @@ class _PygameBackend:
         )
 
     def _process_events(self) -> None:
+        # Pump the event queue before reading — prevents the
+        # ``SystemError: <built-in function get> returned a result with
+        # an exception set`` crash that occurs on Windows when the event
+        # pump hasn't been initialised after a dummy-video-driver init.
+        try:
+            pygame.event.pump()
+        except pygame.error:
+            pass
         for event in pygame.event.get():
             if event.type == pygame.JOYBUTTONDOWN:
                 idx = event.button
