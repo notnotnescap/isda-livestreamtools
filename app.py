@@ -140,10 +140,89 @@ def reload_config():
 
 
 # ---------------------------------------------------------------------------
-# Entry point
+# Version & update
 # ---------------------------------------------------------------------------
 
+import subprocess
+import sys
+from pathlib import Path
 
+_REPO_ROOT = Path(__file__).resolve().parent
+
+
+def _git_head() -> str:
+    """Return the current local HEAD commit hash (short)."""
+    try:
+        return (
+            subprocess.run(
+                ["git", "rev-parse", "--short", "HEAD"],
+                capture_output=True, text=True, cwd=_REPO_ROOT, timeout=5,
+            )
+            .stdout.strip()
+        )
+    except Exception:
+        return "unknown"
+
+
+def _git_remote_head() -> str | None:
+    """Return the origin/main commit hash, or None if unreachable."""
+    try:
+        subprocess.run(
+            ["git", "fetch", "origin", "--quiet"],
+            capture_output=True, cwd=_REPO_ROOT, timeout=10,
+        )
+        return (
+            subprocess.run(
+                ["git", "rev-parse", "--short", "origin/main"],
+                capture_output=True, text=True, cwd=_REPO_ROOT, timeout=5,
+            )
+            .stdout.strip()
+        )
+    except Exception:
+        return None
+
+
+def _git_pull() -> bool:
+    """Pull latest code from origin/main. Returns True on success."""
+    try:
+        subprocess.run(
+            ["git", "pull", "--ff-only", "origin", "main"],
+            capture_output=True, cwd=_REPO_ROOT, timeout=30,
+        )
+        return True
+    except Exception:
+        return False
+
+
+@app.route("/api/version")
+def api_version():
+    """Return the current local version (commit hash) and the remote version."""
+    local = _git_head()
+    remote = _git_remote_head()
+    return jsonify({
+        "local": local,
+        "remote": remote or "unknown",
+        "update_available": remote is not None and remote != local,
+    })
+
+
+@app.route("/api/update", methods=["POST"])
+def api_update():
+    """Pull latest code from GitHub. Returns new version info."""
+    old = _git_head()
+    ok = _git_pull()
+    new = _git_head()
+    return jsonify({
+        "status": "ok" if ok else "error",
+        "old_version": old,
+        "new_version": new,
+        "updated": old != new,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
 
 
 if __name__ == "__main__":

@@ -142,33 +142,125 @@
         </details>
     </section>
 
+    <!-- Update notification banner -->
+    <div id="update-banner" style="display:none; position:fixed; top:0; left:0; right:0; z-index:999; background:#1e3a5f; color:#fff; text-align:center; padding:8px 16px; font-size:13px; border-bottom:2px solid #3b82f6;">
+        <span id="update-banner-text"></span>
+        <button onclick="this.parentElement.style.display='none'" style="margin-left:12px; background:#3b82f6; border:none; color:#fff; padding:2px 10px; border-radius:4px; cursor:pointer;">Dismiss</button>
+    </div>
+
     <section class="debug">
         <details>
             <summary>Advanced</summary>
             <button id="clear-timestamps-btn" class="red">Clear timestamps</button>
             <button class="red" onclick="location.reload()">Reload page</button>
             <button id="reload-config-btn" class="yellow">Reload config</button>
+            <hr class="my-2 border-gray-600">
+            <div class="text-xs space-y-1">
+                <div>
+                    <span class="text-gray-400">Version (local):</span>
+                    <span id="version-local" class="text-gray-200 font-mono">—</span>
+                </div>
+                <div>
+                    <span class="text-gray-400">Version (remote):</span>
+                    <span id="version-remote" class="text-gray-200 font-mono">—</span>
+                </div>
+                <div>
+                    <span id="version-status" class="text-gray-500"></span>
+                </div>
+                <div class="flex gap-2 mt-1">
+                    <button id="check-update-btn" class="text-xs px-2 py-0.5 rounded border border-gray-500 text-gray-300 hover:bg-gray-700">Check for updates</button>
+                    <button id="apply-update-btn" class="text-xs px-2 py-0.5 rounded border border-green-600 text-green-400 hover:bg-green-900" disabled>Update &amp; Restart</button>
+                </div>
+            </div>
         </details>
     </section>
 
     <script>
       document.addEventListener('DOMContentLoaded', () => {
-        const btn = document.getElementById('reload-config-btn');
-        if (btn) {
-          btn.addEventListener('click', async () => {
-            btn.disabled = true;
-            btn.textContent = 'Reloading...';
+        // Reload config
+        const cfgBtn = document.getElementById('reload-config-btn');
+        if (cfgBtn) {
+          cfgBtn.addEventListener('click', async () => {
+            cfgBtn.disabled = true;
+            cfgBtn.textContent = 'Reloading...';
             try {
               const res = await fetch('/api/reload-config', { method: 'POST' });
               const data = await res.json();
-              btn.textContent = data.status === 'ok' ? '✅ Config reloaded' : '❌ Failed';
+              cfgBtn.textContent = data.status === 'ok' ? '✅ Config reloaded' : '❌ Failed';
               setTimeout(() => location.reload(), 1500);
             } catch {
-              btn.textContent = '❌ Error';
-              btn.disabled = false;
+              cfgBtn.textContent = '❌ Error';
+              cfgBtn.disabled = false;
             }
           });
         }
+
+        // Version check
+        const localEl = document.getElementById('version-local');
+        const remoteEl = document.getElementById('version-remote');
+        const statusEl = document.getElementById('version-status');
+        const checkBtn = document.getElementById('check-update-btn');
+        const applyBtn = document.getElementById('apply-update-btn');
+        const banner = document.getElementById('update-banner');
+        const bannerText = document.getElementById('update-banner-text');
+
+        async function checkVersion(showBanner) {
+          const res = await fetch('/api/version');
+          const data = await res.json();
+          localEl.textContent = data.local;
+          remoteEl.textContent = data.remote;
+
+          if (data.update_available) {
+            statusEl.textContent = '\u2191 Update available (' + data.remote + ')';
+            statusEl.className = 'text-yellow-400';
+            applyBtn.disabled = false;
+
+            if (showBanner) {
+              bannerText.textContent = 'A new version is available: ' + data.local + ' \u2192 ' + data.remote;
+              banner.style.display = 'block';
+            }
+          } else {
+            statusEl.textContent = 'Up to date';
+            statusEl.className = 'text-green-400';
+            applyBtn.disabled = true;
+          }
+          return data;
+        }
+
+        checkBtn.addEventListener('click', () => checkVersion(true));
+
+        // Apply update
+        applyBtn.addEventListener('click', async () => {
+          applyBtn.disabled = true;
+          applyBtn.textContent = 'Updating...';
+          try {
+            const res = await fetch('/api/update', { method: 'POST' });
+            const data = await res.json();
+            if (data.updated) {
+              applyBtn.textContent = '✅ Updated to ' + data.new_version;
+              bannerText.textContent = 'Updated from ' + data.old_version + ' to ' + data.new_version + '. Reloading...';
+              banner.style.display = 'block';
+              setTimeout(() => location.reload(), 2000);
+            } else {
+              applyBtn.textContent = 'Already up to date';
+              setTimeout(() => { applyBtn.textContent = 'Update & Restart'; applyBtn.disabled = false; }, 2000);
+            }
+          } catch {
+            applyBtn.textContent = '❌ Update failed';
+            setTimeout(() => { applyBtn.textContent = 'Update & Restart'; applyBtn.disabled = false; }, 2000);
+          }
+        });
+
+        // On page load, check version and show banner if version changed since last visit
+        checkVersion(false).then(() => {
+          const curVer = localEl.textContent;
+          const prevVer = localStorage.getItem('isda-version');
+          if (prevVer && prevVer !== curVer && curVer !== '\u2014' && curVer !== 'unknown') {
+            bannerText.textContent = 'ISDA Live Stream Tools updated: ' + prevVer + ' \u2192 ' + curVer;
+            banner.style.display = 'block';
+          }
+          localStorage.setItem('isda-version', curVer);
+        });
       });
     </script>
     <script>window.OBS_CONFIG = {{ obs_config | tojson }};</script>
