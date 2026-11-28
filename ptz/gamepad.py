@@ -180,13 +180,17 @@ class _XInputBackend:
 
         gp = state.Gamepad
 
-        # Normalise axes to -1..1 (matching SDL convention)
-        self._axes[0] = max(-1.0, min(1.0, gp.sThumbLX / 32767.0))  # LEFT_X
-        self._axes[1] = max(-1.0, min(1.0, gp.sThumbLY / 32767.0))  # LEFT_Y
-        self._axes[2] = max(-1.0, min(1.0, gp.sThumbRX / 32767.0))  # RIGHT_X
-        self._axes[3] = max(-1.0, min(1.0, gp.sThumbRY / 32767.0))  # RIGHT_Y
+        # Normalise axes to -1..1 matching SDL convention.
+        # XInput Y-axes are inverted relative to SDL:
+        #   SDL:  up = -1,  down = +1
+        #   XInput: up = +1, down = -1
+        # We negate Y values to match what the PTZ controller expects.
+        self._axes[0] = max(-1.0, min(1.0, gp.sThumbLX / 32767.0))   # LEFT_X
+        self._axes[1] = max(-1.0, min(1.0, -gp.sThumbLY / 32767.0))  # LEFT_Y  (negated)
+        self._axes[2] = max(-1.0, min(1.0, gp.sThumbRX / 32767.0))   # RIGHT_X
+        self._axes[3] = max(-1.0, min(1.0, -gp.sThumbRY / 32767.0))  # RIGHT_Y (negated)
         self._axes[4] = (gp.bRightTrigger / 127.5) - 1.0  # RIGHT_TRIGGER
-        self._axes[5] = (gp.bLeftTrigger / 127.5) - 1.0  # LEFT_TRIGGER
+        self._axes[5] = (gp.bLeftTrigger / 127.5) - 1.0   # LEFT_TRIGGER
 
         buttons = gp.wButtons
         now = time.time()
