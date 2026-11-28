@@ -315,7 +315,9 @@ class _InputsBackend:
         try:
             events = self._device.read()
         except Exception:
-            self._device = None
+            # Don't drop the device on read errors — on Windows the
+            # ``inputs`` library can detect a controller but may fail
+            # to read events from it.  Just skip this poll cycle.
             return
 
         for ev in events:
