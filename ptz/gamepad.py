@@ -40,6 +40,204 @@ class GamepadState:
 
 
 # ---------------------------------------------------------------------------
+# XInput backend (Windows-native — works with Xbox 360/One compatibles)
+# ---------------------------------------------------------------------------
+
+
+class _XInputBackend:
+    """Gamepad reader using Windows XInput API via ctypes.
+
+    This is the most reliable backend on Windows for Xbox-compatible
+    controllers (including the 8BitDo Ultimate 2C which presents as
+    "Xbox 360 Controller for Windows").  It bypasses both SDL and
+    the ``inputs`` library entirely.
+    """
+
+    def __init__(self) -> None:
+        self._connected = False
+        self._name = ""
+        self._port = 0
+        self._last_reconnect: float = 0.0
+        self._axes: dict[int, float] = {}
+        self._buttons: dict[int, bool] = {}
+        self._short_presses: list[str] = []
+        self._long_presses: list[str] = []
+        self._down_times: dict[int, float] = {}
+        self._prev_buttons: int = 0
+        self._raw_events: list[str] = []
+        self._xinput = None
+        import ctypes
+        for dll in ["xinput1_4.dll", "xinput1_3.dll", "xinput9_1_0.dll"]:
+            try:
+                self._xinput = ctypes.windll.LoadLibrary(dll)
+                break
+            except Exception:
+                continue
+
+    # ---- Struct definitions (lazy) ----
+
+    _XINPUT_GAMEPAD = None
+
+    @staticmethod
+    def _make_state():
+        import ctypes
+
+        class XINPUT_GAMEPAD(ctypes.Structure):
+            _fields_ = [
+                ("wButtons", ctypes.c_ushort),
+                ("bLeftTrigger", ctypes.c_ubyte),
+                ("bRightTrigger", ctypes.c_ubyte),
+                ("sThumbLX", ctypes.c_short),
+                ("sThumbLY", ctypes.c_short),
+                ("sThumbRX", ctypes.c_short),
+                ("sThumbRY", ctypes.c_short),
+            ]
+
+        class XINPUT_STATE(ctypes.Structure):
+            _fields_ = [
+                ("dwPacketNumber", ctypes.c_ulong),
+                ("Gamepad", XINPUT_GAMEPAD),
+            ]
+
+        return XINPUT_STATE()
+
+    def connect(self) -> bool:
+        if self._xinput is None:
+            return False
+        import ctypes
+        for port in range(4):
+            state = self._make_state()
+            try:
+                result = self._xinput.XInputGetState(
+                    ctypes.c_ulong(port), ctypes.byref(state)
+                )
+            except Exception:
+                continue
+            if result == 0:  # ERROR_SUCCESS
+                self._connected = True
+                self._name = f"XInput Controller (port {port})"
+                self._port = port
+                return True
+        self._connected = False
+        return False
+
+    @property
+    def connected(self) -> bool:
+        return self._connected
+
+    @property
+    def name(self) -> str:
+        return self._name if self._connected else ""
+
+    def maybe_reconnect(self) -> None:
+        now = time.time()
+        if not self.connected and now - self._last_reconnect > config.RECONNECT_INTERVAL:
+            self._last_reconnect = now
+            self.connect()
+
+    def poll(self) -> GamepadState:
+        self._process_events()
+        short_presses, self._short_presses = self._short_presses, []
+        long_presses, self._long_presses = self._long_presses, []
+        raw_events, self._raw_events = self._raw_events, []
+
+        if not self.connected:
+            return GamepadState(connected=False)
+
+        axes: dict[str, float] = {}
+        for name, idx in config.CONTROLS["axes"].items():
+            axes[name] = self._axes.get(idx, 0.0)
+
+        buttons: dict[str, bool] = {}
+        for name, idx in config.CONTROLS["buttons"].items():
+            buttons[name] = self._buttons.get(idx, False)
+
+        return GamepadState(
+            connected=True,
+            name=self.name,
+            axes=axes,
+            buttons=buttons,
+            short_presses=short_presses,
+            long_presses=long_presses,
+            raw_events=raw_events,
+        )
+
+    def _process_events(self) -> None:
+        if not self._connected or self._xinput is None:
+            return
+        import ctypes
+        state = self._make_state()
+        try:
+            result = self._xinput.XInputGetState(
+                ctypes.c_ulong(self._port), ctypes.byref(state)
+            )
+        except Exception:
+            self._connected = False
+            return
+        if result != 0:
+            self._connected = False
+            return
+
+        gp = state.Gamepad
+
+        # Normalise axes to -1..1 (matching SDL convention)
+        self._axes[0] = max(-1.0, min(1.0, gp.sThumbLX / 32767.0))  # LEFT_X
+        self._axes[1] = max(-1.0, min(1.0, gp.sThumbLY / 32767.0))  # LEFT_Y
+        self._axes[2] = max(-1.0, min(1.0, gp.sThumbRX / 32767.0))  # RIGHT_X
+        self._axes[3] = max(-1.0, min(1.0, gp.sThumbRY / 32767.0))  # RIGHT_Y
+        self._axes[4] = (gp.bRightTrigger / 127.5) - 1.0  # RIGHT_TRIGGER
+        self._axes[5] = (gp.bLeftTrigger / 127.5) - 1.0  # LEFT_TRIGGER
+
+        buttons = gp.wButtons
+        now = time.time()
+
+        # XInput button bitmask -> index mapping (matches config axis layout)
+        xbtn = {
+            0x1000: 0,  # A
+            0x2000: 1,  # B
+            0x4000: 2,  # X
+            0x8000: 3,  # Y
+            0x0010: 8,  # START
+            0x0020: 9,  # BACK
+            0x0040: 10,  # LEFT_THUMB
+            0x0080: 11,  # RIGHT_THUMB
+            0x0100: 12,  # LEFT_SHOULDER
+            0x0200: 13,  # RIGHT_SHOULDER
+        }
+
+        for mask, btn_idx in xbtn.items():
+            was_pressed = (self._prev_buttons & mask) != 0
+            is_pressed = (buttons & mask) != 0
+            self._buttons[btn_idx] = is_pressed
+            if is_pressed and not was_pressed:
+                self._down_times[btn_idx] = now
+                self._raw_events.append(f"Btn {btn_idx} down")
+            elif not is_pressed and was_pressed:
+                self._raw_events.append(f"Btn {btn_idx} up")
+                if btn_idx in self._down_times:
+                    duration = now - self._down_times.pop(btn_idx)
+                    name = config.CONTROLS["buttons"].get(btn_idx, "")
+                    if name and duration > config.LONG_PRESS_TIME:
+                        self._long_presses.append(name)
+                    elif name:
+                        self._short_presses.append(name)
+
+        self._prev_buttons = buttons
+
+    def get_axis(self, name: str) -> float:
+        for cfg_name, idx in config.CONTROLS["axes"].items():
+            if cfg_name == name:
+                return self._axes.get(idx, 0.0)
+        return 0.0
+
+    def is_button_pressed(self, name: str) -> bool:
+        for cfg_name, idx in config.CONTROLS["buttons"].items():
+            if cfg_name == name:
+                return self._buttons.get(idx, False)
+        return False
+
+
+# ---------------------------------------------------------------------------
 # Pygame backend (primary)
 # ---------------------------------------------------------------------------
 
@@ -392,22 +590,25 @@ class Gamepad:
     """
 
     def __init__(self) -> None:
-        self._backend: _PygameBackend | _InputsBackend | None = None
-        self._using_inputs = False
+        self._backend: _XInputBackend | _PygameBackend | _InputsBackend | None = None
 
     def connect(self) -> bool:
-        # Try pygame first
+        # Try XInput first (most reliable on Windows for Xbox compatibles)
+        xi = _XInputBackend()
+        if xi.connect():
+            self._backend = xi
+            return True
+
+        # Try pygame second
         pg = _PygameBackend()
         if pg.connect():
             self._backend = pg
-            self._using_inputs = False
             return True
 
         # Fallback to inputs
         ib = _InputsBackend()
         if ib.connect():
             self._backend = ib
-            self._using_inputs = True
             return True
 
         self._backend = None
@@ -417,8 +618,6 @@ class Gamepad:
     def connected(self) -> bool:
         if self._backend is None:
             return False
-        if self._using_inputs:
-            return self._backend.connected
         return self._backend.connected
 
     @property
@@ -433,9 +632,8 @@ class Gamepad:
     def get_axis(self, name: str) -> float:
         if self._backend is None:
             return 0.0
-        if self._using_inputs:
+        if hasattr(self._backend, 'get_axis'):
             return self._backend.get_axis(name)
-        # Pygame backend: look up axis index and read it
         for cfg_name, idx in config.CONTROLS["axes"].items():
             if cfg_name == name:
                 try:
@@ -447,7 +645,7 @@ class Gamepad:
     def is_button_pressed(self, name: str) -> bool:
         if self._backend is None:
             return False
-        if self._using_inputs:
+        if hasattr(self._backend, 'is_button_pressed'):
             return self._backend.is_button_pressed(name)
         for cfg_name, idx in config.CONTROLS["buttons"].items():
             if cfg_name == name:
@@ -459,8 +657,6 @@ class Gamepad:
 
     def maybe_reconnect(self) -> None:
         if self._backend is None:
-            # No backend yet — try full connect (controller may have
-            # appeared since initial startup)
             self.connect()
             return
         self._backend.maybe_reconnect()
