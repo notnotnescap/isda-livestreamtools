@@ -66,8 +66,12 @@ class _PygameBackend:
         try:
             pygame.display.quit()
             pygame.display.init()
-            # Create a minimal hidden window for raw input registration
-            pygame.display.set_mode((640, 480), pygame.HIDDEN)
+            # Create a window for SDL raw input registration, then minimise
+            # it.  On Windows, SDL needs a visible (or at least mapped) HWND
+            # to register for Raw Input device enumeration.  A HIDDEN window
+            # doesn't work — the window must be mapped to the window station.
+            pygame.display.set_mode((640, 480))
+            pygame.display.iconify()
         except pygame.error:
             pass
         pygame.joystick.init()
