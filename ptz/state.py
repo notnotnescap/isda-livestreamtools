@@ -7,6 +7,7 @@ The controller writes JSON; the web app reads it. No threading, no IPC — just 
 import json
 import os
 import shutil
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -29,10 +30,36 @@ class PTZStatus:
     buttons: dict[str, bool] = field(default_factory=dict)
 
 
+# Debounce: only report controller as disconnected after it's been
+# gone for this many seconds.  Prevents UI flicker from brief USB
+# enumeration glitches.
+_DISCONNECT_DEBOUNCE = 0.5
+_last_disconnect_time: float = 0.0
+
+
 def write_status(status: PTZStatus):
-    """Write status to the shared state file (called by controller process)."""
+    """Write status to the shared state file (called by controller process).
+
+    Uses a debounce on ``controller_connected`` so that brief USB
+    enumeration glitches don't flicker the web UI.
+    """
+    global _last_disconnect_time
+
+    now = time.time()
+    actually_connected = status.controller_connected
+
+    if actually_connected:
+        _last_disconnect_time = 0.0
+    elif _last_disconnect_time == 0.0:
+        _last_disconnect_time = now
+
+    debounced_connected = (
+        actually_connected
+        or (now - _last_disconnect_time) < _DISCONNECT_DEBOUNCE
+    )
+
     data = {
-        "controller_connected": status.controller_connected,
+        "controller_connected": debounced_connected,
         "controller_name": status.controller_name,
         "camera_ip": status.camera_ip,
         "camera_connected": status.camera_connected,

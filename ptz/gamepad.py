@@ -59,26 +59,37 @@ class _PygameBackend:
 
     def connect(self) -> bool:
         pygame.joystick.quit()
-        # Must init display before joystick to get a working event pump
-        # (matching the legacy visca-joystick initialisation order).
+        # Initialise display first — on Windows, SDL needs a window HWND
+        # to register for Raw Input device enumeration.  Without this,
+        # SDL can't detect any joysticks when running from pythonw.exe
+        # (no console window to serve as a message pump).
         try:
             pygame.display.quit()
             pygame.display.init()
+            # Create a minimal hidden window for raw input registration
+            pygame.display.set_mode((640, 480), pygame.HIDDEN)
         except pygame.error:
-            pass  # dummy driver — display init may be a no-op
+            pass
         pygame.joystick.init()
-        count = pygame.joystick.get_count()
-        if count == 0:
-            self._joystick = None
-            return False
-        for idx in range(count):
-            try:
-                stick = pygame.joystick.Joystick(idx)
-                stick.init()
-            except pygame.error:
-                continue
-            self._joystick = stick
-            return True
+        # Retry loop matching the legacy visca-joystick behaviour:
+        # try Joystick(0) directly with short delays.
+        # On Windows, get_count() can return 0 even when a controller
+        # is connected, but Joystick(0) works once the window exists.
+        for attempt in range(30):
+            count = pygame.joystick.get_count()
+            if count > 0:
+                for idx in range(count):
+                    try:
+                        stick = pygame.joystick.Joystick(idx)
+                        stick.init()
+                        self._joystick = stick
+                        return True
+                    except pygame.error:
+                        continue
+            # Re-init joystick subsystem to force re-enumeration
+            pygame.joystick.quit()
+            pygame.joystick.init()
+            time.sleep(0.5)
         self._joystick = None
         return False
 
@@ -441,5 +452,9 @@ class Gamepad:
         return False
 
     def maybe_reconnect(self) -> None:
-        if self._backend is not None:
-            self._backend.maybe_reconnect()
+        if self._backend is None:
+            # No backend yet — try full connect (controller may have
+            # appeared since initial startup)
+            self.connect()
+            return
+        self._backend.maybe_reconnect()

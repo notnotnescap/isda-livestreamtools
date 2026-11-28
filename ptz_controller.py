@@ -15,8 +15,11 @@ import socket
 import time
 import traceback
 
-# Set dummy video driver for headless operation (no display needed)
-os.environ.setdefault("SDL_VIDEO_DRIVER", "dummy")
+# NOTE: Do NOT set SDL_VIDEO_DRIVER=dummy on Windows.
+# The dummy driver prevents SDL from creating the window needed for
+# Raw Input device enumeration — joysticks won't be detected.
+# SDL's default driver works fine; a hidden window is created via
+# pygame.display.set_mode() during Gamepad initialisation.
 
 import pygame
 
